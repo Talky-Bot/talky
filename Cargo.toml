@@ -1,0 +1,14 @@
+[package]
+name = "disc-bot"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+poise = "0.5"
+tokio = { version = "1.33", features = ["full"] }
+chrono = "0.4"
+lazy_static = "1.4"
+serde = "1.0"
+toml = "0.8"

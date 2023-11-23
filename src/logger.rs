@@ -1,40 +1,38 @@
-use chrono::Local;
+use chrono::{DateTime, Local};
 use tokio::{fs, io::AsyncWriteExt, sync::Mutex};
 
-// List all possible log types
+use crate::error::Error;
+
 pub enum LogType {
     Info,
     Warning,
     Error,
 }
 
-// Make the struct for the logger, this keeps the file open and allows us to write to it without reopening it every time
 pub struct Logger {
     file: Mutex<fs::File>,
 }
 
-// This is the functions for the logger struct
 impl Logger {
-    // The new function is similar to the __init__ function in python
     pub async fn new() -> tokio::io::Result<Logger> {
         Ok(Logger {
-            // Check if the file exists byt getting the metadata of the file. If it doesn't exist, create it
             file: {
-                if fs::metadata("./logs/").await.is_err() {
+                if let Err(_) = fs::metadata("./logs/").await {
                     fs::create_dir("./logs/").await?;
                 }
 
-                if fs::metadata("./logs/latest.log").await.is_ok() {
-                    let now = Local::now();
+                if let Ok(metadata) = fs::metadata("./logs/latest.log").await {
                     fs::rename(
                         "./logs/latest.log",
-                        format!("./logs/{}.log", now.format("%Y-%m-%d %H-%M-%S")),
+                        format!("./logs/{}.log", {
+                            let datetime: DateTime<Local> = metadata.created().unwrap().into();
+                            datetime.format("%Y-%m-%d %H-%M-%S").to_string()
+                        }),
                     )
                     .await?;
                 }
 
                 fs::File::create("./logs/latest.log").await?;
-                // Mutex is used to safly write to the variable across multiple threads
                 Mutex::new(
                     fs::OpenOptions::new()
                         .append(true)
@@ -45,8 +43,7 @@ impl Logger {
         })
     }
 
-    // The log function is used to write to the file and print the colored output to the console
-    pub async fn log(&self, log_type: LogType, message: &str) -> Result<(), tokio::io::Error> {
+    pub async fn log(&self, log_type: LogType, message: &str) -> Result<(), Error> {
         let time = Local::now().format("[%Y-%m-%d %H:%M:%S]");
         let log_string: String;
         let mut file_lock = self.file.lock().await;
@@ -70,6 +67,18 @@ impl Logger {
             }
         };
         file_lock.flush().await?;
+        Ok(())
+    }
+
+    pub async fn log_error(&self, error: Error) -> Result<(), Error> {
+        let time = Local::now().format("[%Y-%m-%d %H:%M:%S]");
+        let log_string: String;
+        let mut file_lock = self.file.lock().await;
+
+        log_string = format!("{} [WARNING] {}\n", time, error.to_string());
+        file_lock.write_all(log_string.as_bytes()).await?;
+        print!("\x1b[33m{}\x1b[0m", log_string);
+
         Ok(())
     }
 }

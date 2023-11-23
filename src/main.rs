@@ -1,14 +1,17 @@
 mod calling;
 mod config;
+mod error;
 mod logger;
 
+use error::Error;
 use logger::LogType;
 use poise::serenity_prelude as serenity;
 use tokio::sync::{Mutex, RwLock};
 
-pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
+pub type BotResult<T> = Result<T, Error>;
 // Used to store common data across all commands or data the commands might need to access that needs to persist between invocations
+
 pub struct Data {
     logger: Mutex<logger::Logger>,
     calling: RwLock<calling::Calling>,
@@ -43,26 +46,44 @@ async fn event_handler(
                 .await?;
         }
         poise::Event::Message { new_message } => {
-            if new_message.is_own(&ctx.cache) {
+            if new_message.is_own(&ctx.cache) || new_message.webhook_id.is_some() {
                 return Ok(());
             }
-            let channel_id = new_message.channel_id.0;
             let calling = data.calling.read().await;
 
-            if calling.channel_in_convo(&channel_id).await {
-                let channel = serenity::model::id::ChannelId(
-                    calling
-                        .retrieve_channel_id(&channel_id)
-                        .await
-                        .unwrap()
-                        .to_owned(),
-                );
-                channel
-                    .say(
-                        &ctx.http,
-                        format!("{}: {}", new_message.author.name, new_message.content),
-                    )
-                    .await?;
+            if calling.channel_in_convo(&new_message.channel_id).await {
+                let channel = calling
+                    .retrieve_channel_id(&new_message.channel_id)
+                    .await
+                    .unwrap();
+
+                match channel.webhooks(&ctx.http).await {
+                    Ok(webhooks) => {
+                        if webhooks.is_empty() {
+                            channel
+                                .create_webhook(&ctx.http, "Rusty Bot Calling Webhook")
+                                .await
+                                .unwrap();
+                        } else {
+                            for hook in channel.webhooks(&ctx.http).await.unwrap() {
+                                match hook
+                                    .execute(&ctx.http, false, |w| {
+                                        w.content(&new_message.content)
+                                            .avatar_url(new_message.author.avatar_url().unwrap())
+                                            .username(&new_message.author.name)
+                                    })
+                                    .await
+                                {
+                                    Ok(_) => break,
+                                    Err(_) => continue,
+                                }
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        println!("Err??");
+                    }
+                }
             }
         }
         _ => {}
@@ -74,10 +95,7 @@ async fn event_handler(
 async fn main() {
     let options = poise::FrameworkOptions {
         // Put all commands that need to be registered here
-        commands: vec![
-            ping(),
-            calling::call(),
-        ],
+        commands: vec![ping(), calling::call()],
         prefix_options: poise::PrefixFrameworkOptions {
             prefix: Some("--".to_string()),
             ..Default::default()

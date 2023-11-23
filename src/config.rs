@@ -23,7 +23,7 @@ impl Config {
             .write(true)
             .create(true)
             .open("./config.toml")
-            .unwrap();
+            .expect("Error with config file! Cannot create or open the file!");
         let mut contents = String::new();
         config_file.read_to_string(&mut contents).unwrap();
 
@@ -34,7 +34,7 @@ impl Config {
 
             config_file
                 .write_all(toml::to_string_pretty(&default_config).unwrap().as_bytes())
-                .unwrap();
+                .expect("Unable to write default config to file!");
             panic!("Please fill out the config file and restart the bot");
         }
         toml::from_str(&contents).unwrap()

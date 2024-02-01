@@ -1,10 +1,9 @@
 mod calling;
 mod config;
 mod error;
-mod logger;
+mod moderation;
 
 use error::Error;
-use logger::LogType;
 use poise::serenity_prelude as serenity;
 use tokio::sync::{Mutex, RwLock};
 
@@ -13,7 +12,6 @@ pub type BotResult<T> = Result<T, Error>;
 // Used to store common data across all commands or data the commands might need to access that needs to persist between invocations
 
 pub struct Data {
-    logger: Mutex<logger::Logger>,
     calling: RwLock<calling::Calling>,
 }
 
@@ -36,14 +34,7 @@ async fn event_handler(
 ) -> Result<(), Error> {
     match event {
         poise::Event::Ready { data_about_bot } => {
-            data.logger
-                .lock()
-                .await
-                .log(
-                    LogType::Info,
-                    &format!("Bot is ready! Logged in as {}!", data_about_bot.user.name),
-                )
-                .await?;
+            println!("Connected as {}!", data_about_bot.user.name);
         }
         poise::Event::Message { new_message } => {
             if new_message.is_own(&ctx.cache) || new_message.webhook_id.is_some() {
@@ -95,7 +86,7 @@ async fn event_handler(
 async fn main() {
     let options = poise::FrameworkOptions {
         // Put all commands that need to be registered here
-        commands: vec![ping(), calling::call()],
+        commands: vec![ping(), calling::call(), moderation::ban::ban(), moderation::kick::kick()],
         prefix_options: poise::PrefixFrameworkOptions {
             prefix: Some("--".to_string()),
             ..Default::default()
@@ -112,7 +103,6 @@ async fn main() {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 Ok(Data {
-                    logger: Mutex::new(logger::Logger::new().await?),
                     calling: RwLock::new(calling::Calling::new().await),
                 })
             })

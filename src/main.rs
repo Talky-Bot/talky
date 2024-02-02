@@ -86,7 +86,7 @@ async fn event_handler(
 async fn main() {
     let options = poise::FrameworkOptions {
         // Put all commands that need to be registered here
-        commands: vec![ping(), calling::call(), moderation::ban::ban(), moderation::kick::kick()],
+        commands: vec![ping(), calling::call(), moderation::ban::ban(), moderation::kick::kick(), moderation::unban::unban()],
         prefix_options: poise::PrefixFrameworkOptions {
             prefix: Some("--".to_string()),
             ..Default::default()

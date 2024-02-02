@@ -17,7 +17,7 @@ pub async fn ban(
             None => ctx.guild().unwrap().ban(ctx.http(), &user.id, dod.unwrap_or(0)).await?,
         }
     
-        ctx.reply(format!("Banned user {}", &user.name)).await?;
+        ctx.reply(format!("Banned user {}\nID:{}", &user.name, &user.id)).await?;
     }
     
     Ok(())

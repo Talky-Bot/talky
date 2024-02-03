@@ -13,8 +13,13 @@ pub async fn kick(
         ctx.reply("Can't kick yourself, goofy").await?;
     } else {
         match reason {
-            Some(reason) => ctx.guild().unwrap().kick_with_reason(&ctx.http(), &user.id, &reason).await?,
-            None => ctx.guild().unwrap().kick(&ctx.http(), &user.id).await?,
+            Some(reason) => {
+                ctx.guild_id()
+                    .unwrap()
+                    .kick_with_reason(&ctx.http(), &user.id, &reason)
+                    .await?
+            }
+            None => ctx.guild_id().unwrap().kick(&ctx.http(), &user.id).await?,
         }
     }
 

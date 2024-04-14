@@ -1,0 +1,5 @@
+# Config file for talky
+# https://github.com/talky-bot/talky
+
+# Discord token goes here
+token = "PUT_TOKEN_HERE"

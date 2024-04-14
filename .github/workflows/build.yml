@@ -1,0 +1,96 @@
+name: Build main
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-windows-x64:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-x64-cargo
+
+    - name: Download/Update toolchain for x64 and build
+      run: rustup target add x86_64-pc-windows-msvc && cargo build --release --verbose --target x86_64-pc-windows-msvc  
+
+    - name: Upload x64 Windows Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-msvc-x64-talky-build-${{ github.run_number }}
+        path: target/x86_64-pc-windows-msvc/release/disc-bot.exe
+
+  build-linux-x64:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-x64-cargo
+
+    - name: Download/Update toolchain for x64 and build
+      run: rustup target add x86_64-unknown-linux-gnu && cargo build --release --verbose --target x86_64-unknown-linux-gnu
+
+    - name: Upload x64 Linux Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: linux-gnu-x64-talky-build-${{ github.run_number }}
+        path: target/x86_64-unknown-linux-gnu/release/disc-bot
+
+  build-linux-aarch64:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-aarch64-cargo
+
+
+    - name: Install gcc-aarch64-linux-gnu
+      run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
+    - name: Download/Update toolchain for aarch64 and build
+      run: rustup target add aarch64-unknown-linux-gnu && cargo build --release --verbose --target aarch64-unknown-linux-gnu
+
+    - name: Upload aarch64 Linux Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: linux-gnu-aarch64-talky-build-${{ github.run_number }}
+        path: target/aarch64-unknown-linux-gnu/release/disc-bot

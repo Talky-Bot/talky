@@ -35,7 +35,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: windows-msvc-x64-talky-build-${{ github.run_number }}
-        path: target/x86_64-pc-windows-msvc/release/disc-bot.exe
+        path: target/x86_64-pc-windows-msvc/release/talky.exe
 
   build-linux-x64:
     runs-on: ubuntu-latest
@@ -62,7 +62,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: linux-gnu-x64-talky-build-${{ github.run_number }}
-        path: target/x86_64-unknown-linux-gnu/release/disc-bot
+        path: target/x86_64-unknown-linux-gnu/release/talky
 
   build-linux-aarch64:
     runs-on: ubuntu-latest
@@ -93,4 +93,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: linux-gnu-aarch64-talky-build-${{ github.run_number }}
-        path: target/aarch64-unknown-linux-gnu/release/disc-bot
+        path: target/aarch64-unknown-linux-gnu/release/talky

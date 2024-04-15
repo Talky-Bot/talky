@@ -14,7 +14,7 @@ impl Config {
             .expect("Unable to check if config file exists");
 
         if exists {
-            toml::from_str(&fs::read_to_string("config.toml").await.unwrap()).expect("Invalid config file! Make sure it is valid toml syntax and required fields are filled.")
+            toml::from_str(&fs::read_to_string("talky.toml").await.unwrap()).expect("Invalid config file! Make sure it is valid toml syntax and required fields are filled.")
         } else {
             const DEFAULT_CONFIG: &str = include_str!("default.toml");
             fs::write("talky.toml", DEFAULT_CONFIG)

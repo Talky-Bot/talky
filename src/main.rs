@@ -4,6 +4,8 @@ use poise::serenity_prelude as serenity;
 mod config;
 mod error;
 mod misc;
+mod moderation;
+
 struct Data {}
 type Context<'a> = poise::Context<'a, Data, BotError>;
 
@@ -13,7 +15,7 @@ async fn main() {
 
     let intents = serenity::GatewayIntents::non_privileged();
     let options = poise::FrameworkOptions {
-        commands: vec![misc::ping()],
+        commands: vec![misc::ping(), moderation::purge::purge()],
         event_handler: |ctx, event, framework, data| {
             Box::pin(event_handler(ctx, event, framework, data))
         },

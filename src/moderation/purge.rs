@@ -1,4 +1,8 @@
-use poise::serenity_prelude::{self as serenity, Builder, GetMessages};
+use poise::serenity_prelude::{
+    self as serenity,
+    futures::{StreamExt, TryStreamExt},
+    Builder, GetMessages,
+};
 
 use crate::{error::BotError, Context};
 
@@ -17,24 +21,32 @@ pub async fn purge(_ctx: Context<'_>, _amount: u64) -> Result<(), BotError> {
 async fn after(
     ctx: Context<'_>,
     #[description = "The ID of the message to delete after"] message_id: serenity::MessageId,
-    #[description = "The amount of messages to delete. Must be less than 100. Defaults to 100."]
+    #[description = "The amount of messages to delete, up to 1000. Defaults to 100."]
     #[min = 1]
-    #[max = 100]
-    amount: Option<u8>,
+    #[max = 1000]
+    amount: Option<u16>,
 ) -> Result<(), BotError> {
     ctx.defer_ephemeral().await?;
-    let messages = GetMessages::new()
-        .after(message_id)
-        .limit(amount.unwrap_or(100))
-        .execute(ctx.http(), ctx.channel_id())
-        .await?;
+    let mut count: u16 = 0;
+    let mut left = amount.unwrap_or(100);
+    let mut after_id = message_id;
 
-    for message in &messages {
-        message.delete(ctx.http()).await?;
+    while left > 0 {
+        let messages = GetMessages::new()
+            .limit(left as u8)
+            .after(after_id)
+            .execute(&ctx.http(), ctx.channel_id())
+            .await?;
+        after_id = messages.last().unwrap().id;
+
+        for message in messages {
+            message.delete(&ctx.http()).await?;
+            count += 1;
+            left -= 1;
+        }
     }
 
-    ctx.say(format!("Deleted {} messages", &messages.len()))
-        .await?;
+    ctx.say(format!("Deleted {} messages", count)).await?;
 
     Ok(())
 }
@@ -43,23 +55,26 @@ async fn after(
 #[poise::command(slash_command, ephemeral)]
 async fn any(
     ctx: Context<'_>,
-    #[description = "The amount of messages to delete. Must be less than 100. Defaults to 100."]
+    #[description = "The amount of messages to delete, up to 1000. Defaults to 100."]
     #[min = 1]
-    #[max = 100]
-    amount: Option<u8>,
+    #[max = 1000]
+    amount: Option<u16>,
 ) -> Result<(), BotError> {
     ctx.defer_ephemeral().await?;
-    let messages = GetMessages::new()
-        .limit(amount.unwrap_or(100))
-        .execute(ctx.http(), ctx.channel_id())
-        .await?;
+    let mut messages = ctx.channel_id().messages_iter(ctx.http()).boxed();
+    let mut count = 0;
 
-    for message in &messages {
-        message.delete(ctx.http()).await?;
+    for _ in 0..amount.unwrap_or(100) {
+        match messages.try_next().await {
+            Ok(message) => {
+                message.unwrap().delete(&ctx.http()).await?;
+                count += 1;
+            }
+            Err(_) => break,
+        }
     }
 
-    ctx.say(format!("Deleted {} messages", &messages.len()))
-        .await?;
+    ctx.say(format!("Deleted {count} messages")).await?;
 
     Ok(())
 }

@@ -9,7 +9,7 @@ use crate::{error::BotError, Context};
 #[poise::command(
     slash_command,
     guild_only,
-    subcommands("after", "any"),
+    subcommands("after", "any", "before"),
     default_member_permissions = "MANAGE_MESSAGES"
 )]
 pub async fn purge(_ctx: Context<'_>, _amount: u64) -> Result<(), BotError> {
@@ -75,6 +75,41 @@ async fn any(
     }
 
     ctx.say(format!("Deleted {count} messages")).await?;
+
+    Ok(())
+}
+
+/// Deletes all messages before the given message. Defaults to 100 messages deleted.
+#[poise::command(slash_command, ephemeral)]
+async fn before(
+    ctx: Context<'_>,
+    #[description = "The ID of the message to delete before"] message_id: serenity::MessageId,
+    #[description = "The amount of messages to delete, up to 1000. Defaults to 100."]
+    #[min = 1]
+    #[max = 1000]
+    amount: Option<u16>,
+) -> Result<(), BotError> {
+    ctx.defer_ephemeral().await?;
+    let mut count: u16 = 0;
+    let mut left = amount.unwrap_or(100);
+    let mut before_id = message_id;
+
+    while left > 0 {
+        let messages = GetMessages::new()
+            .limit(left as u8)
+            .before(before_id)
+            .execute(&ctx.http(), ctx.channel_id())
+            .await?;
+        before_id = messages.first().unwrap().id;
+
+        for message in messages {
+            message.delete(&ctx.http()).await?;
+            count += 1;
+            left -= 1;
+        }
+    }
+
+    ctx.say(format!("Deleted {} messages", count)).await?;
 
     Ok(())
 }
